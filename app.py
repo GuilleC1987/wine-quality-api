@@ -1,14 +1,15 @@
 from flask import Flask, request, jsonify
 import joblib
 import numpy as np
-import os
 
+# Inicializar Flask
 app = Flask(__name__)
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(BASE_DIR, "model.pkl")
-SCALER_PATH = os.path.join(BASE_DIR, "scaler.pkl")
+# Cargar modelo y scaler
+model = joblib.load('model.pkl')
+scaler = joblib.load('scaler.pkl')
 
+# Nombres de las características
 FEATURE_NAMES = [
     'fixed_acidity', 'volatile_acidity', 'citric_acid',
     'residual_sugar', 'chlorides', 'free_sulfur_dioxide',
@@ -16,135 +17,113 @@ FEATURE_NAMES = [
     'sulphates', 'alcohol'
 ]
 
-model = None
-scaler = None
-load_errors = []
-
-def _safe_load(path, label):
-    try:
-        obj = joblib.load(path)
-        return obj, None
-    except Exception as e:
-        return None, f"{label}: {e}"
-
-scaler, err_s = _safe_load(SCALER_PATH, "scaler")
-if err_s:
-    load_errors.append(err_s)
-
-model, err_m = _safe_load(MODEL_PATH, "model")
-if err_m:
-    load_errors.append(err_m)
-
-@app.get("/")
+@app.route('/')
 def home():
+    """Endpoint principal con información de la API"""
     return jsonify({
-        "message": "Wine Quality Prediction API",
-        "version": "1.0",
-        "endpoints": {
-            "/": "Información de la API (GET)",
-            "/health": "Health check (GET)",
-            "/example": "Ejemplo de datos (GET)",
-            "/predict": "Predicción de calidad (POST, JSON)"
+        'message': 'Wine Quality Prediction API',
+        'version': '1.0',
+        'endpoints': {
+            '/': 'Información de la API',
+            '/health': 'Health check',
+            '/predict': 'Predicción de calidad (POST)',
+            '/example': 'Ejemplo de datos de entrada'
         },
-        "author": "GUILLERMO_CANAS"
+        'author': 'GUILLERMO_CANAS'  # ⚠️ CAMBIA ESTO
     })
 
-@app.get("/health")
+@app.route('/health')
 def health():
-    ok = (model is not None) and (scaler is not None) and (not load_errors)
+    """Health check endpoint"""
     return jsonify({
-        "status": "healthy" if ok else "degraded",
-        "model_loaded": model is not None,
-        "scaler_loaded": scaler is not None,
-        "errors": load_errors,
-        "cwd": os.getcwd(),
-        "base_dir": BASE_DIR
-    }), (200 if ok else 500)
+        'status': 'healthy',
+        'model_loaded': model is not None,
+        'scaler_loaded': scaler is not None
+    })
 
-@app.get("/example")
+@app.route('/example')
 def example():
+    """Retorna un ejemplo de datos de entrada"""
     return jsonify({
-        "example_input": {
-            "fixed_acidity": 7.4,
-            "volatile_acidity": 0.7,
-            "citric_acid": 0.0,
-            "residual_sugar": 1.9,
-            "chlorides": 0.076,
-            "free_sulfur_dioxide": 11.0,
-            "total_sulfur_dioxide": 34.0,
-            "density": 0.9978,
-            "pH": 3.51,
-            "sulphates": 0.56,
-            "alcohol": 9.4
+        'example_input': {
+            'fixed_acidity': 7.4,
+            'volatile_acidity': 0.7,
+            'citric_acid': 0.0,
+            'residual_sugar': 1.9,
+            'chlorides': 0.076,
+            'free_sulfur_dioxide': 11.0,
+            'total_sulfur_dioxide': 34.0,
+            'density': 0.9978,
+            'pH': 3.51,
+            'sulphates': 0.56,
+            'alcohol': 9.4
+        },
+        'expected_output': {
+            'quality': 'low',
+            'probability_low': 0.85,
+            'probability_high': 0.15
         }
     })
 
-@app.post("/predict")
+@app.route('/predict', methods=['POST'])
 def predict():
+    """
+    Endpoint para hacer predicciones
+    
+    Request body (JSON):
+    {
+        "fixed_acidity": 7.4,
+        "volatile_acidity": 0.7,
+        "citric_acid": 0.0,
+        "residual_sugar": 1.9,
+        "chlorides": 0.076,
+        "free_sulfur_dioxide": 11.0,
+        "total_sulfur_dioxide": 34.0,
+        "density": 0.9978,
+        "pH": 3.51,
+        "sulphates": 0.56,
+        "alcohol": 9.4
+    }
+    """
     try:
-        if model is None or scaler is None:
+        # Obtener datos del request
+        data = request.get_json()
+        
+        # Validar que todos los campos estén presentes
+        missing_fields = [field for field in FEATURE_NAMES if field not in data]
+        if missing_fields:
             return jsonify({
-                "error": "Modelo o scaler no cargados",
-                "details": load_errors
-            }), 500
-
-        data = request.get_json(silent=True) or {}
-        missing = [f for f in FEATURE_NAMES if f not in data]
-        if missing:
-            return jsonify({
-                "error": "Missing fields",
-                "missing": missing,
-                "required_order": FEATURE_NAMES
+                'error': 'Missing fields',
+                'missing': missing_fields
             }), 400
-
-        try:
-            features = [float(data[f]) for f in FEATURE_NAMES]
-        except Exception as conv_err:
-            return jsonify({
-                "error": "Type conversion error",
-                "details": str(conv_err)
-            }), 400
-
-        X = np.array(features, dtype=float).reshape(1, -1)
-
-        try:
-            Xs = scaler.transform(X)
-        except Exception as scale_err:
-            return jsonify({
-                "error": "Scaler transform failed",
-                "details": str(scale_err)
-            }), 500
-
-        try:
-            pred = model.predict(Xs)[0]
-        except Exception as pred_err:
-            return jsonify({
-                "error": "Model predict failed",
-                "details": str(pred_err)
-            }), 500
-
-        prob_low = prob_high = None
-        try:
-            if hasattr(model, "predict_proba"):
-                proba = model.predict_proba(Xs)[0]
-                if len(proba) >= 2:
-                    prob_low = float(proba[0])
-                    prob_high = float(proba[1])
-        except Exception:
-            pass
-
-        quality = "high" if int(pred) == 1 else "low"
-        confidence = None
-        if prob_low is not None and prob_high is not None:
-            confidence = float(max(prob_low, prob_high))
-
+        
+        # Extraer features en el orden correcto
+        features = [float(data[field]) for field in FEATURE_NAMES]
+        features_array = np.array(features).reshape(1, -1)
+        
+        # Escalar features
+        features_scaled = scaler.transform(features_array)
+        
+        # Hacer predicción
+        prediction = model.predict(features_scaled)[0]
+        probabilities = model.predict_proba(features_scaled)[0]
+        
+        # Preparar respuesta
+        quality = 'high' if prediction == 1 else 'low'
+        
         return jsonify({
-            "quality": quality,
-            "probability_low": prob_low,
-            "probability_high": prob_high,
-            "confidence": confidence,
-            "input_features": {k: data[k] for k in FEATURE_NAMES}
+            'quality': quality,
+            'probability_low': float(probabilities[0]),
+            'probability_high': float(probabilities[1]),
+            'confidence': float(max(probabilities)),
+            'input_features': data
         })
-
+        
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({
+            'error': str(e)
+        }), 500
+
+if __name__ == '__main__':
+    # Para desarrollo local
+    app.run(debug=True, host='0.0.0.0', port=5000)
