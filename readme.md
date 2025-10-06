@@ -1,4 +1,3 @@
-
 # Wine Quality Prediction API
 
 API para predecir la calidad de vinos basándose en características químicas.
@@ -43,47 +42,49 @@ Realiza una predicción
   "sulphates": 0.56,
   "alcohol": 9.4
 }
-Response:
+```
 
-json
-Copiar código
+**Response:**
+```json
 {
   "quality": "low",
   "probability_low": 0.85,
   "probability_high": 0.15,
   "confidence": 0.85
 }
-Uso Local
-bash
-Copiar código
+```
+
+## Uso Local
+
+```bash
 pip install -r requirements.txt
 python app.py
-URL de Producción
-https://gcanas87.pythonanywhere.com
+```
 
-Fecha de Deployment: 05/10/2025
+## URL de Producción
+[https://gcanas87.pythonanywhere.com](https://gcanas87.pythonanywhere.com)
 
-Formulario HTML
-https://gcanas87.pythonanywhere.com/form
+**Fecha de Deployment:** 05/10/2025
+
+## Formulario HTML
+[https://gcanas87.pythonanywhere.com/form](https://gcanas87.pythonanywhere.com/form)
 
 Allí podrás ingresar los valores de cada variable y obtener una predicción directamente desde el navegador.
 
-Tecnologías usadas
-Python 3.10
+## Tecnologías usadas
+- Python 3.10  
+- Flask  
+- Joblib  
+- Scikit-learn  
+- Numpy  
 
-Flask
+## Endpoints utilizados
 
-Joblib
-
-Scikit-learn
-
-Numpy
-
-Endpoints utilizados
-Método	Ruta	Descripción
-GET	/	Información general y lista de endpoints
-GET	/health	Verifica si el modelo y el scaler están cargados correctamente
-GET	/example	Devuelve un ejemplo de datos de entrada válidos
-GET	/stats	Muestra estadísticas básicas del modelo
-POST	/predict	Envía datos JSON para obtener una predicción
-GET	/form	Formulario web para ingresar datos manualmente
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| `GET` | `/` | Información general y lista de endpoints |
+| `GET` | `/health` | Verifica si el modelo y el scaler están cargados correctamente |
+| `GET` | `/example` | Devuelve un ejemplo de datos de entrada válidos |
+| `GET` | `/stats` | Muestra estadísticas básicas del modelo |
+| `POST` | `/predict` | Envía datos JSON para obtener una predicción |
+| `GET` | `/form` | Formulario web para ingresar datos manualmente |
