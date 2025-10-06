@@ -59,7 +59,35 @@ pip install -r requirements.txt
 python app.py
 
 URL de Producción
-https://TU-USUARIO.pythonanywhere.com
+https://gcanas87.pythonanywhere.com
 
 Fecha de Deployment: 05/10/2025
 
+Formulario HTML en:
+https://gcanas87.pythonanywhere.com/form
+
+Allí podrás ingresar los valores de cada variable y obtener una predicción directamente desde el navegador.
+
+
+Tecnologías usadas
+
+Python 3.10
+
+Flask
+
+Joblib
+
+Scikit-learn
+
+Numpy
+
+Endpoint utilizados:
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| `GET` | `/` | Información general y lista de endpoints |
+| `GET` | `/health` | Verifica si el modelo y el scaler están cargados correctamente |
+| `GET` | `/example` | Devuelve un ejemplo de datos de entrada válidos |
+| `GET` | `/stats` | Muestra estadísticas básicas del modelo |
+| `POST` | `/predict` | Envía datos JSON para obtener una predicción |
+| `GET` | `/form` | Formulario web para ingresar datos manualmente |
